@@ -74,8 +74,60 @@ app.post('/api/register', (req, res) => {
   const { name, email, password } = req.body;
   const hashedPassword = bcrypt.hashSync(password, 10)
   User.create({ name, email, password: hashedPassword }, (error, user) => {
-    const token = jwt.sign({ data: user }, "knsdnfasjkdndskjfnsdfosjouf9ewjdopjpewjdiedjeijdiejide");
+    const token = jwt.sign({ data: user }, "secret");
     res.status(201).json({ token, user });
+  });
+})
+
+
+const apiAuth = (req, res, next) => {
+  const token = req.headers.token;
+  
+  
+  try {
+    const data = jwt.verify(token, 'secret')
+
+    req.authUser = data;
+
+    return next()
+  } catch (e) {
+    return res.status(401).json({ message: 'unauthenticated.' })
+  }
+}
+
+
+app.get('/api/articles', apiAuth, (req, res) => {
+  res.json({
+    articles: [{
+      id: 1,
+      title: 'first title'
+    }, {
+        id: 2,
+        title: 'second title'
+      }]
+  })
+})
+
+app.post('/api/login', (req, res) => {
+  const { email, password } = req.body;
+  console.log(req.body)
+
+  // find user from database by email.
+  User.findOne({ email }, (error, user) => {
+    // if user
+    if (user) {
+      // compare password
+      const passwordIsCorrect = bcrypt.compareSync(password, user.password);
+
+      if (passwordIsCorrect) {
+        const token = jwt.sign({ data: user }, "secret");
+        return res.status(201).json({ token, user });
+      } else {
+        return res.json({ message: 'incorrect credentials' });
+      }
+    } else {
+      return res.json({ message: 'incorrect credentials' });
+    }
   });
 })
 
